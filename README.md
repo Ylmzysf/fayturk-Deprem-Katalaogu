@@ -1,0 +1,1 @@
+# fayturk-Deprem-Katalaogu
