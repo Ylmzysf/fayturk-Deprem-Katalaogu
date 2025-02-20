@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Harita</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        #container {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px;
+            width: calc(100% - 40px);
+        }
+        #filters {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 20px;
+            width: 30%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        #map {
+            flex-grow: 1;
+            height: 700px;
+        }
+        .filter-container {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .date-container,
+        .latitude-container,
+        .longitude-container,
+        .depth-container,
+        .magnitude-container,
+        .location-container {
+            display: flex;
+            align-items: center;
+        }
+        input[type="date"],
+        input[type="number"],
+        input[type="text"] {
+            width: 45%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            margin-right: 5px;
+        }
+        input[type="number"]:last-child,
+        input[type="date"]:last-child {
+            margin-right: 0;
+        }
+        button {
+            width: 120px; /* Buton genişliği */
+            height: 40px; /* Buton yüksekliği */
+            background-color: #007bff; /* Buton rengi */
+            color: white; /* Yazı rengi */
+            border: none; /* Kenar yok */
+            border-radius: 4px; /* Kenar yuvarlama */
+            cursor: pointer; /* İmleç değişimi */
+            margin-right: 10px; /* Butonlar arasında boşluk */
+        }
+        button:hover {
+            background-color: #0056b3; /* Hover rengi */
+        }
+        #clearFilters {
+            background-color: #dc3545; /* Temizle butonu için kırmızı arka plan */
+        }
+        #clearFilters:hover {
+            background-color: #c82333; /* Temizle butonu için hover rengi */
+        }
+        #results-container {
+            margin: 20px; /* Dış boşluk */
+            padding: 20px; /* İç boşluk */
+            border: 1px solid #dee2e6; /* Kenar rengi */
+            border-radius: 5px; /* Kenar yuvarlama */
+            background-color: #f8f9fa; /* Açık gri arka plan */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Gölge efekti */
+        }
+        #results-table {
+            width: 100%; /* Tablo genişliği */
+            border-collapse: collapse; /* Kenarları birleştir */
+        }
+        #results-table th, #results-table td {
+            border: 1px solid #dee2e6; /* Kenar rengi */
+            padding: 10px; /* İç boşluk */
+            text-align: left; /* Metin hizalaması */
+        }
+        #results-table th {
+            background-color: #007bff; /* Başlık arka plan rengi */
+            color: white; /* Başlık yazı rengi */
+        }
+        #pagination {
+            margin-top: 20px; /* Üst boşluk */
+            display: flex; /* Flexbox kullanarak yerleştirme */
+            justify-content: center; /* Ortala */
+            align-items: center; /* Dikey ortalama */
+        }
+        #pagination button {
+            margin: 0 10px; /* Butonlar arasında boşluk */
+            padding: 10px 15px; /* İç boşluk */
+            background-color: #007bff; /* Buton rengi */
+            color: white; /* Yazı rengi */
+            border: none; /* Kenar yok */
+            border-radius: 4px; /* Kenar yuvarlama */
+            cursor: pointer; /* İmleç değişimi */
+        }
+        #pagination button:disabled {
+            background-color: #cccccc; /* Devre dışı buton rengi */
+            cursor: not-allowed; /* İmleç değişimi */
+        }
+        /* Kaydırma özelliği için stil */
+        .table-container {
+            max-height: 400px; /* Maksimum yükseklik */
+            overflow-y: auto; /* Dikey kaydırma */
+            overflow-x: hidden; /* Yatay kaydırmayı gizle */
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="filters">
+            <h3>Filtreler</h3>
+            <label>Tarih Aralığı:</label><br>
+            <div class="date-container">
+                <input type="date" id="startDate"> - <input type="date" id="endDate">
+            </div><br><br>
+            
+            <label>Enlem Aralığı:</label><br>
+            <div class="latitude-container">
+                <input type="number" id="minLatitude" placeholder="Min Enlem"> - 
+                <input type="number" id="maxLatitude" placeholder="Max Enlem">
+            </div><br><br>
+            
+            <label>Boylam Aralığı:</label><br>
+            <div class="longitude-container">
+                <input type="number" id="minLongitude" placeholder="Min Boylam"> - 
+                <input type="number" id="maxLongitude" placeholder="Max Boylam">
+            </div><br><br>
+            
+            <label>Derinlik Aralığı:</label><br>
+            <div class="depth-container">
+                <input type="number" id="minDepth" placeholder="Min Derinlik"> - 
+                <input type="number" id="maxDepth" placeholder="Max Derinlik">
+            </div><br><br>
+            
+            <label>Büyüklük Aralığı:</label><br>
+            <div class="magnitude-container">
+                <input type="number" id="minMagnitude" placeholder="Min Büyüklük"> - 
+                <input type="number" id="maxMagnitude" placeholder="Max Büyüklük">
+            </div><br><br>
+            
+            <label>Yer Kısıtları:</label><br>
+            <div class="location-container">
+                <input type="text" id="location" placeholder="Konum">
+                <button id="applyFilters">Filtreleri Uygula</button>
+                <button id="clearFilters">Temizle</button>
+            </div>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <!-- Yeni Container -->
+    <div id="results-container">
+        <h3>Sonuçlar</h3>
+        <div class="table-container">
+            <table id="results-table">
+                <thead>
+                    <tr>
+                        <th>Tarih</th>
+                        <th>Enlem</th>
+                        <th>Boylam</th>
+                        <th>Derinlik</th>
+                        <th>Tip</th>
+                        <th>Büyüklük</th>
+                        <th>Konum</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Sorgu sonuçları buraya eklenecek -->
+                </tbody>
+            </table>
+        </div>
+        <div id="pagination">
+            <button id="prevPage" disabled>Önceki</button>
+            <span id="pageInfo"></span>
+            <button id="nextPage">Sonraki</button>
+        </div>
+    </div>
+
+    <script>
+        var map = L.map('map').setView([39.9334, 32.8597], 6); // Türkiye'nin ortalama koordinatları
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Büyüklüğe göre renk seçen bir fonksiyon
+        function getColorByMagnitude(magnitude) {
+            if (magnitude < 3.0) return '#00ff00'; // Yeşil
+            if (magnitude < 4.0) return '#7fff00'; // Açık Yeşil
+            if (magnitude < 5.0) return '#ffff00'; // Sarı
+            if (magnitude < 6.0) return '#ffbf00'; // Turuncu
+            if (magnitude < 7.0) return '#ff8000'; // Koyu Turuncu
+            return '#ff0000'; // Kırmızı
+        }
+
+        // Büyüklüğe göre daire yarıçapı belirleyen bir fonksiyon
+        function getRadiusByMagnitude(magnitude) {
+            if (magnitude < 3.0) return 4;
+            if (magnitude < 4.0) return 6;
+            if (magnitude < 5.0) return 8;
+            if (magnitude < 6.0) return 10;
+            if (magnitude < 7.0) return 12;
+            return 14;
+        }
+
+        // Verileri harita üzerinde işaretle
+        function plotData(data) {
+            console.log('Harita için veri:', data); // Hata ayıklama için log ekleyin
+
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.CircleMarker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            data.forEach(function(point) {
+                L.circleMarker([point.Enlem, point.Boylam], {
+                    radius: getRadiusByMagnitude(point.Büyüklük), // Büyüklüğe göre daire yarıçapı
+                    color: 'black', // Kenar rengi siyah
+                    weight: 0.3, // Kenar kalınlığı ince
+                    fillColor: getColorByMagnitude(point.Büyüklük), // Büyüklüğe göre dolgu rengi
+                    fillOpacity: 0.5 // Dairenin dolgu opaklığı
+                }).addTo(map);
+            });
+        }
+
+        let currentPage = 1; // Mevcut sayfa
+        const resultsPerPage = 50; // Sayfa başına sonuç sayısı
+        let allResults = []; // Tüm sonuçlar
+
+        $('#applyFilters').click(function() {
+            var filters = {
+                startDate: $('#startDate').val(),
+                endDate: $('#endDate').val(),
+                minLatitude: parseFloat($('#minLatitude').val()) || null,
+                maxLatitude: parseFloat($('#maxLatitude').val()) || null,
+                minLongitude: parseFloat($('#minLongitude').val()) || null,
+                maxLongitude: parseFloat($('#maxLongitude').val()) || null,
+                minDepth: parseFloat($('#minDepth').val()) || null,
+                maxDepth: parseFloat($('#maxDepth').val()) || null,
+                minMagnitude: parseFloat($('#minMagnitude').val()) || null,
+                maxMagnitude: parseFloat($('#maxMagnitude').val()) || null,
+                location: $('#location').val()
+            };
+
+            // Temizle butonuna tıklama olayı
+        document.getElementById('clearFilters').addEventListener('click', function() {
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            document.getElementById('minLatitude').value = '';
+            document.getElementById('maxLatitude').value = '';
+            document.getElementById('minLongitude').value = '';
+            document.getElementById('maxLongitude').value = '';
+            document.getElementById('minDepth').value = '';
+            document.getElementById('maxDepth').value = '';
+            document.getElementById('minMagnitude').value = '';
+            document.getElementById('maxMagnitude').value = '';
+            document.getElementById('location').value = '';
+        });
+
+            console.log('Filtreler:', filters); // Hata ayıklama için log ekleyin
+
+            $.getJSON('/get_filtered_data', filters, function(data) {
+                console.log('Filtrelenmiş veri:', data); // Hata ayıklama için log ekleyin
+                allResults = data; // Tüm sonuçları sakla
+                currentPage = 1; // Sayfayı sıfırla
+                renderTable(); // Tabloyu render et
+                plotData(data); // Harita üzerinde verileri göster
+            }).fail(function(jqxhr, textStatus, error) {
+                console.error('Filtreleme isteği başarısız:', textStatus, error);
+            });
+        });
+
+        // İlk yüklemede tüm verileri al ve harita üzerinde işaretle
+        $.getJSON('/get_data', function(data) {
+            plotData(data);
+        });
+
+        // Tabloyu render etme fonksiyonu
+        function renderTable() {
+            const tbody = $('#results-table tbody');
+            tbody.empty(); // Önceki sonuçları temizle
+
+            // Sayfaya göre verileri al
+            const startIndex = (currentPage - 1) * resultsPerPage;
+            const endIndex = startIndex + resultsPerPage;
+            const paginatedResults = allResults.slice(startIndex, endIndex);
+
+            paginatedResults.forEach(point => {
+                const row = `<tr>
+                    <td>${point.Tarih || 'Veri yok'}</td>
+                    <td>${point.Enlem || 'Veri yok'}</td>
+                    <td>${point.Boylam || 'Veri yok'}</td>
+                    <td>${point.Derinlik || 'Veri yok'}</td>
+                    <td>${point.Tip || 'Veri yok'}</td>
+                    <td>${point.Büyüklük || 'Veri yok'}</td>
+                    <td>${point.Konum || 'Veri yok'}</td>
+                </tr>`;
+                tbody.append(row); // Yeni satırı tabloya ekle
+            });
+
+            // Sayfa bilgilerini güncelle
+            $('#pageInfo').text(`Sayfa ${currentPage} / ${Math.ceil(allResults.length / resultsPerPage)}`);
+            $('#prevPage').prop('disabled', currentPage === 1); // Önceki butonunu kontrol et
+            $('#nextPage').prop('disabled', currentPage >= Math.ceil(allResults.length / resultsPerPage)); // Sonraki butonunu kontrol et
+        }
+
+        // Önceki sayfa butonuna tıklama olayı
+        $('#prevPage').click(function() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable(); // Tabloyu yeniden render et
+            }
+        });
+
+        // Sonraki sayfa butonuna tıklama olayı
+        $('#nextPage').click(function() {
+            if (currentPage < Math.ceil(allResults.length / resultsPerPage)) {
+                currentPage++;
+                renderTable(); // Tabloyu yeniden render et
+            }
+        });
+    </script>
+</body>
+</html>
